@@ -1,7 +1,7 @@
 "use client";
 
 import { getSupabase } from "./supabase";
-import type { MorningData, EveningData, DailyEntry, GoalsData } from "./types";
+import type { MorningData, EveningData, DailyEntry, GoalsData, InsightResult } from "./types";
 
 function getToday(): string {
   return new Date().toISOString().slice(0, 10);
@@ -31,6 +31,7 @@ export async function getEntry(date: string): Promise<DailyEntry | null> {
     morning: (data.morning as MorningData) ?? {},
     evening: (data.evening as EveningData) ?? {},
     score: data.score,
+    insights: (data.insights as InsightResult) ?? null,
   };
 }
 
@@ -112,12 +113,13 @@ export async function getAllEntries(): Promise<DailyEntry[]> {
 
   if (error || !data) return [];
 
-  return data.map((row: { id?: string; date: string; morning?: unknown; evening?: unknown; score?: number }) => ({
+  return data.map((row: { id?: string; date: string; morning?: unknown; evening?: unknown; score?: number; insights?: unknown }) => ({
     id: row.id,
     date: row.date,
     morning: (row.morning as MorningData) ?? {},
     evening: (row.evening as EveningData) ?? {},
     score: row.score,
+    insights: (row.insights as InsightResult) ?? null,
   }));
 }
 
@@ -161,6 +163,42 @@ export async function setGoals(
       },
       { onConflict: "user_id" }
     );
+
+  return { error: error ? new Error(error.message) : null };
+}
+
+export async function saveInsight(
+  date: string,
+  insight: InsightResult
+): Promise<{ error: Error | null }> {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error("Not connected") };
+  const userId = await getUserId();
+  if (!userId) return { error: new Error("Not signed in") };
+
+  const { error } = await supabase.from("daily_entries").upsert(
+    {
+      user_id: userId,
+      date,
+      insights: { ...insight, generatedAt: new Date().toISOString() },
+    },
+    { onConflict: "user_id,date" }
+  );
+
+  return { error: error ? new Error(error.message) : null };
+}
+
+export async function deleteEntry(date: string): Promise<{ error: Error | null }> {
+  const supabase = getSupabase();
+  if (!supabase) return { error: new Error("Not connected") };
+  const userId = await getUserId();
+  if (!userId) return { error: new Error("Not signed in") };
+
+  const { error } = await supabase
+    .from("daily_entries")
+    .delete()
+    .eq("user_id", userId)
+    .eq("date", date);
 
   return { error: error ? new Error(error.message) : null };
 }

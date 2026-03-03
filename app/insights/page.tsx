@@ -1,26 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllEntries, getGoals } from "../../lib/storage";
-import type { DailyEntry, GoalsData } from "../../lib/types";
+import { getAllEntries, getGoals, saveInsight } from "../../lib/storage";
+import type { DailyEntry, GoalsData, InsightResult } from "../../lib/types";
 
 type Period = "today" | "week" | "month" | "threeMonths";
-
-interface InsightResult {
-  period: string;
-  overallScore: number;
-  scoreBreakdown: {
-    nutrition: number;
-    physicalMetrics: number;
-    sleep: number;
-    consistency: number;
-  };
-  summary: string;
-  highlights: string[];
-  areasToImprove: string[];
-  actionableTips: string[];
-  notablePatterns: string | null;
-}
 
 const PERIODS: { id: Period; label: string; days: number; minEntries: number }[] = [
   { id: "today", label: "Today", days: 1, minEntries: 1 },
@@ -144,7 +128,14 @@ export default function InsightsPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to generate insights");
-      setResults((prev) => ({ ...prev, [activePeriod]: data as InsightResult }));
+      const result = data as InsightResult;
+      setResults((prev) => ({ ...prev, [activePeriod]: result }));
+
+      // Auto-save daily insights to the diary entry
+      if (activePeriod === "today") {
+        const today = new Date().toISOString().slice(0, 10);
+        saveInsight(today, result);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -156,13 +147,13 @@ export default function InsightsPage() {
   const enough = !dataLoading && hasEnoughData(activePeriod);
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-stone-50">
       {/* Header */}
-      <section className="bg-gradient-to-br from-stone-50 via-violet-50/30 to-stone-100 px-6 pt-12 pb-10">
+      <section className="bg-white border-b border-stone-200 px-6 pt-8 pb-6">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-stone-800 tracking-tight">AI Insights</h1>
-          <p className="mt-2 text-stone-600">
-            Analyze your health data and get personalised feedback.
+          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">AI Insights</h1>
+          <p className="mt-1 text-sm text-stone-500">
+            Analyse your health data and get personalised feedback.
           </p>
         </div>
       </section>

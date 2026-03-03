@@ -31,12 +31,30 @@ export interface EveningData {
   notes?: string;
 }
 
+export interface InsightResult {
+  period: string;
+  overallScore: number;
+  scoreBreakdown: {
+    nutrition: number;
+    physicalMetrics: number;
+    sleep: number;
+    consistency: number;
+  };
+  summary: string;
+  highlights: string[];
+  areasToImprove: string[];
+  actionableTips: string[];
+  notablePatterns: string | null;
+  generatedAt?: string;
+}
+
 export interface DailyEntry {
   id?: string;
   date: string;
   morning: MorningData;
   evening: EveningData;
   score?: number | null;
+  insights?: InsightResult | null;
 }
 
 export interface GoalsData {

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllEntries } from "../../lib/storage";
-import type { DailyEntry } from "../../lib/types";
+import { getAllEntries, deleteEntry } from "../../lib/storage";
+import type { DailyEntry, InsightResult } from "../../lib/types";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -30,24 +30,132 @@ function ScaleValue({ value, max = 5 }: { value: number | null | undefined; max?
   return <span>{value}<span className="text-stone-400 text-xs">/{max}</span></span>;
 }
 
-function DayDetail({ entry, date }: { entry: DailyEntry | undefined; date: string }) {
+function InsightPanel({ insight }: { insight: InsightResult }) {
+  const scoreColor =
+    insight.overallScore >= 80
+      ? "text-emerald-600"
+      : insight.overallScore >= 60
+      ? "text-amber-500"
+      : "text-red-500";
+  const scoreBg =
+    insight.overallScore >= 80
+      ? "bg-emerald-50"
+      : insight.overallScore >= 60
+      ? "bg-amber-50"
+      : "bg-red-50";
+
+  const generatedAt = insight.generatedAt
+    ? new Date(insight.generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="border-t border-stone-100" />
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-violet-700">✨ Daily AI Insight</p>
+          {generatedAt && (
+            <span className="text-xs text-stone-400">Generated at {generatedAt}</span>
+          )}
+        </div>
+
+        {/* Score */}
+        <div className={`inline-flex items-baseline gap-1 px-3 py-1.5 rounded-lg ${scoreBg} mb-3`}>
+          <span className={`text-2xl font-bold ${scoreColor}`}>{insight.overallScore}</span>
+          <span className="text-stone-400 text-sm">/100</span>
+        </div>
+
+        {/* Summary */}
+        <p className="text-sm text-stone-700 leading-relaxed mb-4">{insight.summary}</p>
+
+        {/* Highlights */}
+        {insight.highlights.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1.5">Highlights</p>
+            <ul className="space-y-1">
+              {insight.highlights.map((h, i) => (
+                <li key={i} className="flex gap-2 text-sm text-stone-700">
+                  <span className="text-emerald-500 flex-shrink-0">✓</span>
+                  {h}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Areas to improve */}
+        {insight.areasToImprove.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1.5">To Work On</p>
+            <ul className="space-y-1">
+              {insight.areasToImprove.map((a, i) => (
+                <li key={i} className="flex gap-2 text-sm text-stone-700">
+                  <span className="text-amber-400 flex-shrink-0">→</span>
+                  {a}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Tips */}
+        {insight.actionableTips.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1.5">Tips</p>
+            <ul className="space-y-1">
+              {insight.actionableTips.map((t, i) => (
+                <li key={i} className="flex gap-2 text-sm text-stone-700">
+                  <span className="text-violet-400 flex-shrink-0">•</span>
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DayDetail({
+  entry,
+  date,
+  onDelete,
+}: {
+  entry: DailyEntry | undefined;
+  date: string;
+  onDelete: (date: string) => void;
+}) {
   const d = new Date(date + "T12:00:00");
   const label = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const [showInsight, setShowInsight] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    const { error } = await deleteEntry(date);
+    setDeleting(false);
+    if (!error) {
+      onDelete(date);
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
-        <div>
-          <p className="font-semibold text-stone-800">{label}</p>
-          <div className="flex gap-3 mt-1">
-            {entry?.morning.weight != null || entry?.morning.sleepHours != null
-              ? <span className="text-xs text-amber-600 font-medium">☀️ Morning logged</span>
-              : <span className="text-xs text-stone-400">☀️ Morning — not logged</span>}
-            {entry?.evening.mood != null || entry?.evening.calories != null
-              ? <span className="text-xs text-indigo-600 font-medium">🌙 Evening logged</span>
-              : <span className="text-xs text-stone-400">🌙 Evening — not logged</span>}
-          </div>
+      <div className="px-6 py-4 border-b border-stone-100">
+        <p className="font-semibold text-stone-800">{label}</p>
+        <div className="flex gap-3 mt-1 flex-wrap">
+          {entry?.morning.weight != null || entry?.morning.sleepHours != null
+            ? <span className="text-xs text-amber-600 font-medium">☀️ Morning logged</span>
+            : <span className="text-xs text-stone-400">☀️ Morning — not logged</span>}
+          {entry?.evening.mood != null || entry?.evening.calories != null
+            ? <span className="text-xs text-indigo-600 font-medium">🌙 Evening logged</span>
+            : <span className="text-xs text-stone-400">🌙 Evening — not logged</span>}
+          {entry?.insights && (
+            <span className="text-xs text-violet-600 font-medium">✨ Insight saved</span>
+          )}
         </div>
       </div>
 
@@ -124,6 +232,20 @@ function DayDetail({ entry, date }: { entry: DailyEntry | undefined; date: strin
               </div>
             ) : <p className="text-stone-400 text-sm">Nothing logged</p>}
           </div>
+
+          {/* AI Insight (collapsible) */}
+          {entry.insights && (
+            <>
+              <button
+                onClick={() => setShowInsight((v) => !v)}
+                className="w-full flex items-center justify-between text-sm font-medium text-violet-700 hover:text-violet-900 transition-colors"
+              >
+                <span>✨ {showInsight ? "Hide" : "View"} AI Insight</span>
+                <span className="text-stone-400 text-xs">{showInsight ? "▲" : "▼"}</span>
+              </button>
+              {showInsight && <InsightPanel insight={entry.insights} />}
+            </>
+          )}
         </div>
       ) : (
         <div className="px-6 py-8 text-center text-stone-400 text-sm">
@@ -131,7 +253,7 @@ function DayDetail({ entry, date }: { entry: DailyEntry | undefined; date: strin
         </div>
       )}
 
-      {/* Edit buttons */}
+      {/* Action buttons */}
       <div className="border-t border-stone-100 px-6 py-4 flex gap-3">
         <Link href={`/morning?date=${date}`} className="flex-1 text-center text-sm font-medium rounded-xl border border-amber-300 text-amber-700 py-2 hover:bg-amber-50 transition-colors">
           {entry?.morning.weight != null || entry?.morning.sleepHours != null ? "Edit Morning" : "+ Log Morning"}
@@ -139,6 +261,31 @@ function DayDetail({ entry, date }: { entry: DailyEntry | undefined; date: strin
         <Link href={`/evening?date=${date}`} className="flex-1 text-center text-sm font-medium rounded-xl border border-indigo-300 text-indigo-700 py-2 hover:bg-indigo-50 transition-colors">
           {entry?.evening.mood != null || entry?.evening.calories != null ? "Edit Evening" : "+ Log Evening"}
         </Link>
+        {entry && !confirmDelete && (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="text-sm font-medium rounded-xl border border-stone-200 text-stone-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 px-3 py-2 transition-colors"
+          >
+            Delete
+          </button>
+        )}
+        {entry && confirmDelete && (
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-sm font-medium rounded-xl border border-red-300 text-red-600 hover:bg-red-50 px-3 py-2 transition-colors disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Confirm"}
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="text-sm font-medium rounded-xl border border-stone-200 text-stone-500 hover:bg-stone-50 px-3 py-2 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -156,6 +303,11 @@ export default function DiaryPage() {
   useEffect(() => {
     getAllEntries().then(setEntries).finally(() => setLoading(false));
   }, []);
+
+  function handleEntryDeleted(date: string) {
+    setEntries((prev) => prev.filter((e) => e.date !== date));
+    setSelectedDate(null);
+  }
 
   // Build a map for O(1) lookup
   const entryMap = new Map<string, DailyEntry>();
@@ -177,7 +329,6 @@ export default function DiaryPage() {
     setSelectedDate(null);
   }
 
-  // Cells: leading empties + day numbers
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -229,7 +380,9 @@ export default function DiaryPage() {
               {cells.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`} className="aspect-square" />;
                 const dateStr = toDateStr(viewYear, viewMonth, day);
-                const status = entryStatus(entryMap.get(dateStr));
+                const entry = entryMap.get(dateStr);
+                const status = entryStatus(entry);
+                const hasInsight = entry?.insights != null;
                 const isToday = dateStr === today;
                 const isSelected = dateStr === selectedDate;
                 const isFuture = dateStr > today;
@@ -239,7 +392,7 @@ export default function DiaryPage() {
                     key={dateStr}
                     onClick={() => !isFuture && setSelectedDate(isSelected ? null : dateStr)}
                     disabled={isFuture}
-                    className={`relative aspect-square flex flex-col items-center justify-center gap-1 transition-colors rounded-lg m-0.5
+                    className={`relative aspect-square flex flex-col items-center justify-center gap-0.5 transition-colors rounded-lg m-0.5
                       ${isFuture ? "opacity-25 cursor-default" : "hover:bg-stone-50 cursor-pointer"}
                       ${isSelected ? "bg-violet-50 ring-2 ring-violet-400 ring-inset" : ""}
                       ${isToday && !isSelected ? "ring-2 ring-violet-300 ring-inset" : ""}
@@ -248,8 +401,16 @@ export default function DiaryPage() {
                     <span className={`text-sm font-medium leading-none ${isToday ? "text-violet-600" : "text-stone-700"}`}>
                       {day}
                     </span>
-                    {status !== "none" && (
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusColors[status]}`} />
+                    {/* Dots row */}
+                    {(status !== "none" || hasInsight) && (
+                      <div className="flex items-center gap-0.5">
+                        {status !== "none" && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusColors[status]}`} />
+                        )}
+                        {hasInsight && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                        )}
+                      </div>
                     )}
                   </button>
                 );
@@ -258,11 +419,12 @@ export default function DiaryPage() {
           )}
 
           {/* Legend */}
-          <div className="flex items-center gap-4 px-6 py-3 border-t border-stone-100">
+          <div className="flex items-center gap-4 px-6 py-3 border-t border-stone-100 flex-wrap">
             {[
               { color: "bg-emerald-500", label: "Both logged" },
               { color: "bg-amber-400", label: "Morning only" },
               { color: "bg-indigo-400", label: "Evening only" },
+              { color: "bg-violet-500", label: "AI insight" },
             ].map(({ color, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${color}`} />
@@ -274,7 +436,11 @@ export default function DiaryPage() {
 
         {/* Selected day detail */}
         {selectedDate && (
-          <DayDetail entry={selectedEntry} date={selectedDate} />
+          <DayDetail
+            entry={selectedEntry}
+            date={selectedDate}
+            onDelete={handleEntryDeleted}
+          />
         )}
       </section>
     </main>

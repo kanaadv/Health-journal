@@ -85,29 +85,29 @@ function MorningForm() {
     : null;
 
   return (
-    <main className="min-h-screen">
-      <section className="bg-gradient-to-br from-stone-50 via-amber-50/30 to-stone-100 px-6 pt-12 pb-10">
+    <main className="min-h-screen bg-stone-50">
+      <section className="bg-white border-b border-stone-200 px-6 pt-8 pb-6">
         <div className="max-w-2xl mx-auto">
           <Link
             href={isEditing ? "/diary" : "/"}
-            className="text-sm text-stone-500 hover:text-stone-700 mb-4 inline-block"
+            className="text-xs font-medium text-stone-400 hover:text-stone-600 mb-3 inline-flex items-center gap-1 transition-colors"
           >
             ← {isEditing ? "Back to diary" : "Back to home"}
           </Link>
-          <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
+          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
             Morning Check-in
           </h1>
-          <p className="mt-2 text-stone-600">
+          <p className="mt-1 text-sm text-stone-500">
             {isEditing
               ? `Editing ${formattedDate}`
               : alreadyLogged && !saved
-              ? "You already logged this morning — update below if needed."
+              ? "Already logged today — update below if needed."
               : "Weight, sleep, and how you feel."}
           </p>
         </div>
       </section>
 
-      <section className="px-6 py-8 max-w-2xl mx-auto">
+      <section className="px-6 py-6 max-w-2xl mx-auto">
         {loading ? (
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
             <div className="animate-pulse space-y-4">

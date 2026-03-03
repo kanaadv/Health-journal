@@ -87,18 +87,18 @@ export default function GoalsPage() {
   const bodyFatProgress = progressBar(currentBodyFat, bodyFatGoal ? parseFloat(bodyFatGoal) : null, true);
 
   return (
-    <main className="min-h-screen">
-      <section className="bg-gradient-to-br from-stone-50 via-rose-50/30 to-stone-100 px-6 pt-12 pb-10">
+    <main className="min-h-screen bg-stone-50">
+      <section className="bg-white border-b border-stone-200 px-6 pt-8 pb-6">
         <div className="max-w-2xl mx-auto">
-          <Link href="/" className="text-sm text-stone-500 hover:text-stone-700 mb-4 inline-block">
+          <Link href="/" className="text-xs font-medium text-stone-400 hover:text-stone-600 mb-3 inline-flex items-center gap-1 transition-colors">
             ← Back to home
           </Link>
-          <h1 className="text-3xl font-bold text-stone-800 tracking-tight">Goals</h1>
-          <p className="mt-2 text-stone-600">Set your targets and track your progress.</p>
+          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Goals</h1>
+          <p className="mt-1 text-sm text-stone-500">Set your targets and track your progress.</p>
         </div>
       </section>
 
-      <section className="px-6 py-8 max-w-2xl mx-auto space-y-6">
+      <section className="px-6 py-6 max-w-2xl mx-auto space-y-6">
         {loading ? (
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm animate-pulse space-y-4">
             <div className="h-5 bg-stone-200 rounded w-1/3" />
