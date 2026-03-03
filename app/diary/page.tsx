@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllEntries, deleteEntry } from "../../lib/storage";
-import type { DailyEntry, InsightResult } from "../../lib/types";
+import { getAllEntries, deleteEntry, saveInsight, getGoals } from "../../lib/storage";
+import type { DailyEntry, GoalsData, InsightResult } from "../../lib/types";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -120,17 +120,23 @@ function InsightPanel({ insight }: { insight: InsightResult }) {
 function DayDetail({
   entry,
   date,
+  goals,
   onDelete,
+  onInsightSaved,
 }: {
   entry: DailyEntry | undefined;
   date: string;
+  goals: GoalsData | null;
   onDelete: (date: string) => void;
+  onInsightSaved: (date: string, insight: InsightResult) => void;
 }) {
   const d = new Date(date + "T12:00:00");
   const label = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const [showInsight, setShowInsight] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   async function handleDelete() {
     setDeleting(true);
@@ -138,6 +144,36 @@ function DayDetail({
     setDeleting(false);
     if (!error) {
       onDelete(date);
+    }
+  }
+
+  async function handleGenerateInsight() {
+    if (!entry) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const strippedEntry = { ...entry, evening: { ...entry.evening, workoutImages: undefined } };
+      const workoutImages = entry.evening.workoutImages ?? [];
+      const res = await fetch("/api/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entries: [strippedEntry],
+          goals,
+          period: "today",
+          workoutImages: workoutImages.slice(0, 8),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to generate");
+      const result = data as InsightResult;
+      await saveInsight(date, result);
+      onInsightSaved(date, result);
+      setShowInsight(true);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -233,19 +269,8 @@ function DayDetail({
             ) : <p className="text-stone-400 text-sm">Nothing logged</p>}
           </div>
 
-          {/* AI Insight (collapsible) */}
-          {entry.insights && (
-            <>
-              <button
-                onClick={() => setShowInsight((v) => !v)}
-                className="w-full flex items-center justify-between text-sm font-medium text-violet-700 hover:text-violet-900 transition-colors"
-              >
-                <span>✨ {showInsight ? "Hide" : "View"} AI Insight</span>
-                <span className="text-stone-400 text-xs">{showInsight ? "▲" : "▼"}</span>
-              </button>
-              {showInsight && <InsightPanel insight={entry.insights} />}
-            </>
-          )}
+          {/* AI Insight panel */}
+          {showInsight && entry.insights && <InsightPanel insight={entry.insights} />}
         </div>
       ) : (
         <div className="px-6 py-8 text-center text-stone-400 text-sm">
@@ -254,37 +279,73 @@ function DayDetail({
       )}
 
       {/* Action buttons */}
-      <div className="border-t border-stone-100 px-6 py-4 flex gap-3">
-        <Link href={`/morning?date=${date}`} className="flex-1 text-center text-sm font-medium rounded-xl border border-amber-300 text-amber-700 py-2 hover:bg-amber-50 transition-colors">
-          {entry?.morning.weight != null || entry?.morning.sleepHours != null ? "Edit Morning" : "+ Log Morning"}
-        </Link>
-        <Link href={`/evening?date=${date}`} className="flex-1 text-center text-sm font-medium rounded-xl border border-indigo-300 text-indigo-700 py-2 hover:bg-indigo-50 transition-colors">
-          {entry?.evening.mood != null || entry?.evening.calories != null ? "Edit Evening" : "+ Log Evening"}
-        </Link>
-        {entry && !confirmDelete && (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="text-sm font-medium rounded-xl border border-stone-200 text-stone-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 px-3 py-2 transition-colors"
-          >
-            Delete
-          </button>
-        )}
-        {entry && confirmDelete && (
-          <div className="flex items-center gap-2 ml-auto">
+      <div className="border-t border-stone-100 px-6 py-4 space-y-3">
+        {/* Edit + Delete row */}
+        <div className="flex gap-3">
+          <Link href={`/morning?date=${date}`} className="flex-1 text-center text-sm font-medium rounded-xl border border-amber-300 text-amber-700 py-2 hover:bg-amber-50 transition-colors">
+            {entry?.morning.weight != null || entry?.morning.sleepHours != null ? "Edit Morning" : "+ Log Morning"}
+          </Link>
+          <Link href={`/evening?date=${date}`} className="flex-1 text-center text-sm font-medium rounded-xl border border-indigo-300 text-indigo-700 py-2 hover:bg-indigo-50 transition-colors">
+            {entry?.evening.mood != null || entry?.evening.calories != null ? "Edit Evening" : "+ Log Evening"}
+          </Link>
+          {entry && !confirmDelete && (
             <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="text-sm font-medium rounded-xl border border-red-300 text-red-600 hover:bg-red-50 px-3 py-2 transition-colors disabled:opacity-50"
+              onClick={() => setConfirmDelete(true)}
+              className="text-sm font-medium rounded-xl border border-stone-200 text-stone-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 px-3 py-2 transition-colors"
             >
-              {deleting ? "Deleting..." : "Confirm"}
+              Delete
             </button>
+          )}
+          {entry && confirmDelete && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-sm font-medium rounded-xl border border-red-300 text-red-600 hover:bg-red-50 px-3 py-2 transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Confirm"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-sm font-medium rounded-xl border border-stone-200 text-stone-500 hover:bg-stone-50 px-3 py-2 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* AI Insight row */}
+        {entry && (
+          <div className="flex gap-3">
+            {entry.insights && (
+              <button
+                onClick={() => setShowInsight((v) => !v)}
+                className="flex-1 text-center text-sm font-medium rounded-xl border border-violet-300 text-violet-700 py-2 hover:bg-violet-50 transition-colors"
+              >
+                {showInsight ? "Hide AI Insight" : "View AI Insight"}
+              </button>
+            )}
             <button
-              onClick={() => setConfirmDelete(false)}
-              className="text-sm font-medium rounded-xl border border-stone-200 text-stone-500 hover:bg-stone-50 px-3 py-2 transition-colors"
+              onClick={handleGenerateInsight}
+              disabled={generating}
+              className={`text-sm font-medium rounded-xl border py-2 px-4 transition-colors disabled:opacity-50 ${
+                entry.insights
+                  ? "border-stone-200 text-stone-500 hover:bg-stone-50"
+                  : "flex-1 border-violet-300 text-violet-700 hover:bg-violet-50"
+              }`}
             >
-              Cancel
+              {generating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin inline-block" />
+                  Generating...
+                </span>
+              ) : entry.insights ? "Regenerate" : "Generate AI Insight"}
             </button>
           </div>
+        )}
+        {generateError && (
+          <p className="text-xs text-red-500">{generateError}</p>
         )}
       </div>
     </div>
@@ -293,6 +354,7 @@ function DayDetail({
 
 export default function DiaryPage() {
   const [entries, setEntries] = useState<DailyEntry[]>([]);
+  const [goals, setGoals] = useState<GoalsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -301,12 +363,21 @@ export default function DiaryPage() {
   const [viewMonth, setViewMonth] = useState(now.getMonth());
 
   useEffect(() => {
-    getAllEntries().then(setEntries).finally(() => setLoading(false));
+    Promise.all([getAllEntries(), getGoals()]).then(([e, g]) => {
+      setEntries(e);
+      setGoals(g);
+    }).finally(() => setLoading(false));
   }, []);
 
   function handleEntryDeleted(date: string) {
     setEntries((prev) => prev.filter((e) => e.date !== date));
     setSelectedDate(null);
+  }
+
+  function handleInsightSaved(date: string, insight: InsightResult) {
+    setEntries((prev) =>
+      prev.map((e) => e.date === date ? { ...e, insights: insight } : e)
+    );
   }
 
   // Build a map for O(1) lookup
@@ -316,7 +387,7 @@ export default function DiaryPage() {
   // Calendar grid
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const today = now.toISOString().slice(0, 10);
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -439,7 +510,9 @@ export default function DiaryPage() {
           <DayDetail
             entry={selectedEntry}
             date={selectedDate}
+            goals={goals}
             onDelete={handleEntryDeleted}
+            onInsightSaved={handleInsightSaved}
           />
         )}
       </section>

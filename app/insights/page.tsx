@@ -13,10 +13,14 @@ const PERIODS: { id: Period; label: string; days: number; minEntries: number }[]
   { id: "threeMonths", label: "Last 3 Months", days: 90, minEntries: 20 },
 ];
 
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function getDateDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - (days - 1));
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 
 function ScoreRing({ score }: { score: number }) {
@@ -84,7 +88,7 @@ export default function InsightsPage() {
   function getEntriesForPeriod(period: Period): DailyEntry[] {
     const config = PERIODS.find((p) => p.id === period)!;
     const cutoff = getDateDaysAgo(config.days);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr(new Date());
     return allEntries.filter((e) => e.date >= cutoff && e.date <= today);
   }
 
@@ -133,7 +137,7 @@ export default function InsightsPage() {
 
       // Auto-save daily insights to the diary entry
       if (activePeriod === "today") {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = localDateStr(new Date());
         saveInsight(today, result);
       }
     } catch (err) {

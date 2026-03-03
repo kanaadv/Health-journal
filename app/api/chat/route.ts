@@ -69,7 +69,7 @@ HOW TO TALK:
 - Never repeat advice they didn't ask for twice.
 - Don't use words like "optimise", "metrics", "holistic", "leverage" or anything that sounds like a corporate wellness app.
 - You're not a doctor — don't diagnose or prescribe anything medical.
-- Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+- Today's date is ${(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })()}.`;
 }
 
 export async function POST(req: NextRequest) {

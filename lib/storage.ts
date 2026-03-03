@@ -4,7 +4,8 @@ import { getSupabase } from "./supabase";
 import type { MorningData, EveningData, DailyEntry, GoalsData, InsightResult } from "./types";
 
 function getToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 async function getUserId(): Promise<string | null> {

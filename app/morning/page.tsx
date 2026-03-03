@@ -8,7 +8,8 @@ import { getEntry, upsertMorning } from "../../lib/storage";
 function MorningForm() {
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
-  const today = new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const targetDate = dateParam ?? today;
   const isEditing = dateParam != null && dateParam !== today;
 

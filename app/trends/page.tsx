@@ -28,11 +28,15 @@ function labelDate(dateStr: string, frame: Frame): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function filterEntries(entries: DailyEntry[], days: number): DailyEntry[] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (days - 1));
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
+  const cutoffStr = localDateStr(cutoff);
+  const today = localDateStr(new Date());
   return [...entries]
     .filter((e) => e.date >= cutoffStr && e.date <= today)
     .sort((a, b) => a.date.localeCompare(b.date));
