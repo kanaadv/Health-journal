@@ -31,6 +31,13 @@ export interface EveningData {
   notes?: string;
 }
 
+export interface ChecklistItem {
+  item: string;
+  target?: string | null;
+  actual?: string | null;
+  met: boolean;
+}
+
 export interface InsightResult {
   period: string;
   overallScore: number;
@@ -45,6 +52,7 @@ export interface InsightResult {
   areasToImprove: string[];
   actionableTips: string[];
   notablePatterns: string | null;
+  dailyChecklist?: ChecklistItem[];
   generatedAt?: string;
 }
 
@@ -61,5 +69,45 @@ export interface GoalsData {
   weightGoal?: number | null;
   weightUnit?: "lbs" | "kg";
   bodyFatGoal?: number | null;
+  updatedAt?: string;
+}
+
+export type PrimaryGoal =
+  | "lose_fat"
+  | "build_muscle"
+  | "maintain"
+  | "improve_fitness"
+  | "recomp";
+
+export type ActivityLevel =
+  | "sedentary"
+  | "lightly_active"
+  | "moderately_active"
+  | "very_active";
+
+export type ExperienceLevel = "beginner" | "intermediate" | "advanced";
+
+export interface UserProfile {
+  age?: number | null;
+  sex?: "male" | "female" | "prefer_not_to_say" | null;
+  heightFt?: number | null;
+  heightIn?: number | null;
+  heightCm?: number | null;
+  heightUnit?: "imperial" | "metric";
+  primaryGoal?: PrimaryGoal | null;
+  targetWeight?: number | null;
+  targetBodyFat?: number | null;
+  goalTimeline?: string | null;
+  caloriTarget?: number | null;
+  proteinTarget?: number | null;
+  carbTarget?: number | null;
+  fatTarget?: number | null;
+  dietaryNotes?: string | null;
+  trainingDaysPerWeek?: number | null;
+  workoutTypes?: string[];
+  activityLevel?: ActivityLevel | null;
+  experienceLevel?: ExperienceLevel | null;
+  sleepTarget?: number | null;
+  additionalContext?: string | null;
   updatedAt?: string;
 }

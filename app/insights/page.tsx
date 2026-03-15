@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllEntries, getGoals, saveInsight } from "../../lib/storage";
-import type { DailyEntry, GoalsData, InsightResult } from "../../lib/types";
+import { getAllEntries, getGoals, getProfile, saveInsight } from "../../lib/storage";
+import type { DailyEntry, GoalsData, InsightResult, UserProfile, ChecklistItem } from "../../lib/types";
 
 type Period = "today" | "week" | "month" | "threeMonths";
 
@@ -68,9 +68,48 @@ function ScoreBar({
   );
 }
 
+function ChecklistCard({ items }: { items: ChecklistItem[] }) {
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-4">
+        ✓ Daily Checklist
+      </p>
+      <div className="space-y-2.5">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${
+                  item.met
+                    ? "bg-emerald-100 text-emerald-600"
+                    : "bg-red-100 text-red-500"
+                }`}
+              >
+                {item.met ? "✓" : "✗"}
+              </span>
+              <span className="text-sm text-stone-700 font-medium truncate">{item.item}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs flex-shrink-0">
+              {item.actual != null && (
+                <span className={`font-semibold ${item.met ? "text-emerald-600" : "text-red-500"}`}>
+                  {item.actual}
+                </span>
+              )}
+              {item.target != null && (
+                <span className="text-stone-400">/ {item.target}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function InsightsPage() {
   const [allEntries, setAllEntries] = useState<DailyEntry[]>([]);
   const [goals, setGoals] = useState<GoalsData | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activePeriod, setActivePeriod] = useState<Period>("week");
   const [results, setResults] = useState<Partial<Record<Period, InsightResult>>>({});
   const [loading, setLoading] = useState(false);
@@ -78,9 +117,10 @@ export default function InsightsPage() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getAllEntries(), getGoals()]).then(([entries, g]) => {
+    Promise.all([getAllEntries(), getGoals(), getProfile()]).then(([entries, g, p]) => {
       setAllEntries(entries);
       setGoals(g);
+      setProfile(p);
       setDataLoading(false);
     });
   }, []);
@@ -127,7 +167,7 @@ export default function InsightsPage() {
       const res = await fetch("/api/insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entries, goals, period: activePeriod, workoutImages }),
+        body: JSON.stringify({ entries, goals, period: activePeriod, workoutImages, profile }),
       });
 
       const data = await res.json();
@@ -261,6 +301,11 @@ export default function InsightsPage() {
               </p>
               <p className="text-stone-700 leading-relaxed">{currentResult.summary}</p>
             </div>
+
+            {/* Checklist */}
+            {currentResult.dailyChecklist && currentResult.dailyChecklist.length > 0 && (
+              <ChecklistCard items={currentResult.dailyChecklist} />
+            )}
 
             {/* Highlights */}
             {currentResult.highlights.length > 0 && (

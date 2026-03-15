@@ -1,8 +1,49 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
-import type { DailyEntry, GoalsData, ExerciseEntry } from "../../../lib/types";
+import type { DailyEntry, GoalsData, ExerciseEntry, UserProfile } from "../../../lib/types";
 
-function buildSystemPrompt(entries: DailyEntry[], goals: GoalsData | null): string {
+function buildProfileBlock(profile: UserProfile | null): string {
+  if (!profile) return "";
+
+  const parts: string[] = [];
+  if (profile.age) parts.push(`Age: ${profile.age}`);
+  if (profile.sex && profile.sex !== "prefer_not_to_say") parts.push(`Sex: ${profile.sex}`);
+  if (profile.heightUnit === "imperial" && profile.heightFt != null) {
+    parts.push(`Height: ${profile.heightFt}ft ${profile.heightIn ?? 0}in`);
+  } else if (profile.heightCm != null) {
+    parts.push(`Height: ${profile.heightCm}cm`);
+  }
+  if (profile.primaryGoal) {
+    const labels: Record<string, string> = {
+      lose_fat: "lose fat", build_muscle: "build muscle", maintain: "maintain",
+      improve_fitness: "improve fitness", recomp: "body recomposition",
+    };
+    parts.push(`Primary goal: ${labels[profile.primaryGoal] ?? profile.primaryGoal}`);
+  }
+  if (profile.goalTimeline) parts.push(`Timeline: ${profile.goalTimeline}`);
+  if (profile.caloriTarget) parts.push(`Daily calorie target: ${profile.caloriTarget} kcal`);
+  if (profile.proteinTarget) parts.push(`Daily protein target: ${profile.proteinTarget}g`);
+  if (profile.carbTarget) parts.push(`Daily carb target: ${profile.carbTarget}g`);
+  if (profile.fatTarget) parts.push(`Daily fat target: ${profile.fatTarget}g`);
+  if (profile.dietaryNotes) parts.push(`Dietary notes: ${profile.dietaryNotes}`);
+  if (profile.trainingDaysPerWeek != null) parts.push(`Trains: ${profile.trainingDaysPerWeek}x/week`);
+  if (profile.workoutTypes?.length) parts.push(`Workout types: ${profile.workoutTypes.join(", ")}`);
+  if (profile.activityLevel) {
+    const actLabels: Record<string, string> = {
+      sedentary: "sedentary", lightly_active: "lightly active",
+      moderately_active: "moderately active", very_active: "very active",
+    };
+    parts.push(`Activity level: ${actLabels[profile.activityLevel] ?? profile.activityLevel}`);
+  }
+  if (profile.experienceLevel) parts.push(`Training experience: ${profile.experienceLevel}`);
+  if (profile.sleepTarget) parts.push(`Sleep target: ${profile.sleepTarget}h`);
+  if (profile.additionalContext) parts.push(`Additional context: ${profile.additionalContext}`);
+
+  if (!parts.length) return "";
+  return `\nUSER PROFILE:\n${parts.join("\n")}\n`;
+}
+
+function buildSystemPrompt(entries: DailyEntry[], goals: GoalsData | null, profile: UserProfile | null): string {
   const goalsText = goals
     ? [
         goals.weightGoal != null ? `Target weight: ${goals.weightGoal} ${goals.weightUnit ?? "lbs"}` : null,
@@ -53,7 +94,7 @@ function buildSystemPrompt(entries: DailyEntry[], goals: GoalsData | null): stri
     .join("\n");
 
   return `You're the user's personal health coach and you know their data inside out. You've seen their logs, their notes, their good days and bad days. Talk to them like a real person — direct, warm, no bullshit.
-
+${buildProfileBlock(profile)}
 USER GOALS:
 ${goalsText}
 
@@ -79,14 +120,15 @@ export async function POST(req: NextRequest) {
       return new Response("OpenAI not configured", { status: 500 });
     }
 
-    const { messages, entries, goals } = (await req.json()) as {
+    const { messages, entries, goals, profile } = (await req.json()) as {
       messages: { role: "user" | "assistant"; content: string }[];
       entries: DailyEntry[];
       goals: GoalsData | null;
+      profile?: UserProfile | null;
     };
 
     const client = new OpenAI({ apiKey });
-    const systemPrompt = buildSystemPrompt(entries, goals);
+    const systemPrompt = buildSystemPrompt(entries, goals, profile ?? null);
 
     const stream = await client.chat.completions.create({
       model: "gpt-5-mini",

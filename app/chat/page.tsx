@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getAllEntries, getGoals } from "../../lib/storage";
-import type { DailyEntry, GoalsData } from "../../lib/types";
+import { getAllEntries, getGoals, getProfile } from "../../lib/storage";
+import type { DailyEntry, GoalsData, UserProfile } from "../../lib/types";
 
 interface Message {
   id: string;
@@ -22,6 +22,7 @@ export default function ChatPage() {
   const [streaming, setStreaming] = useState(false);
   const [entries, setEntries] = useState<DailyEntry[]>([]);
   const [goals, setGoals] = useState<GoalsData | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [dataReady, setDataReady] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ export default function ChatPage() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    Promise.all([getAllEntries(), getGoals()]).then(([e, g]) => {
+    Promise.all([getAllEntries(), getGoals(), getProfile()]).then(([e, g, p]) => {
       // Strip workout images before sending to chat context
       const stripped = e.map((entry) => ({
         ...entry,
@@ -37,6 +38,7 @@ export default function ChatPage() {
       }));
       setEntries(stripped);
       setGoals(g);
+      setProfile(p);
       setDataReady(true);
     });
   }, []);
@@ -68,7 +70,7 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: conversationHistory, entries, goals }),
+        body: JSON.stringify({ messages: conversationHistory, entries, goals, profile }),
         signal: abort.signal,
       });
 

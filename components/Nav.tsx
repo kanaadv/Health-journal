@@ -6,13 +6,13 @@ import { useAuth } from "../lib/auth-context";
 import { getSupabase } from "../lib/supabase";
 
 const navItems = [
-  { href: "/morning", label: "Morning", icon: "☀️", exact: false },
-  { href: "/evening", label: "Evening", icon: "🌙", exact: false },
   { href: "/diary", label: "Diary", icon: "📔", exact: false },
   { href: "/goals", label: "Goals", icon: "🎯", exact: false },
+  { href: "/nutrition", label: "Nutrition", icon: "🥗", exact: false },
   { href: "/trends", label: "Trends", icon: "📈", exact: false },
   { href: "/insights", label: "Insights", icon: "✨", exact: false },
   { href: "/chat", label: "Coach", icon: "💬", exact: false },
+  { href: "/profile", label: "Profile", icon: "👤", exact: false },
 ];
 
 export default function Nav() {

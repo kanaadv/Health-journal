@@ -12,7 +12,6 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceLine,
-  Legend,
 } from "recharts";
 import { getAllEntries, getGoals } from "../../lib/storage";
 import type { DailyEntry, GoalsData, ExerciseEntry } from "../../lib/types";
@@ -138,21 +137,13 @@ export default function TrendsPage() {
     .filter((e) => e.morning.sleepHours != null)
     .map((e) => ({ date: labelDate(e.date, frame), value: e.morning.sleepHours! }));
 
-  const moodEnergyData = entries
-    .filter((e) => e.evening.mood != null || e.morning.wakeEnergy != null)
-    .map((e) => ({
-      date: labelDate(e.date, frame),
-      mood: e.evening.mood ?? null,
-      energy: e.morning.wakeEnergy ?? null,
-    }));
+  const carbsData = entries
+    .filter((e) => e.evening.carbs != null)
+    .map((e) => ({ date: labelDate(e.date, frame), value: e.evening.carbs! }));
 
-  const moodStressData = entries
-    .filter((e) => e.evening.mood != null || e.evening.stress != null)
-    .map((e) => ({
-      date: labelDate(e.date, frame),
-      mood: e.evening.mood ?? null,
-      stress: e.evening.stress ?? null,
-    }));
+  const fatData = entries
+    .filter((e) => e.evening.fat != null)
+    .map((e) => ({ date: labelDate(e.date, frame), value: e.evening.fat! }));
 
   const exerciseData = entries.map((e) => {
     const exList: ExerciseEntry[] =
@@ -305,41 +296,37 @@ export default function TrendsPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* 6. Morning Energy & Evening Mood */}
+          {/* 6. Daily Carbs */}
           <ChartCard
-            title="Mood vs Energy"
-            subtitle="Evening mood · Morning energy (1–5)"
-            empty={moodEnergyData.length < 2}
+            title="Daily Carbs"
+            subtitle="Grams per day"
+            empty={carbsData.length === 0}
           >
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={moodEnergyData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" />
+              <BarChart data={carbsData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" vertical={false} />
                 <XAxis dataKey="date" tick={axisStyle} />
-                <YAxis tick={axisStyle} domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="mood" name="Mood" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                <Line type="monotone" dataKey="energy" name="Energy" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-              </LineChart>
+                <YAxis tick={axisStyle} unit="g" />
+                <Tooltip content={<CustomTooltip unit="g" />} />
+                <Bar dataKey="value" name="Carbs" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* 7. Evening Mood & Stress */}
+          {/* 7. Daily Fat */}
           <ChartCard
-            title="Mood vs Stress"
-            subtitle="Evening ratings (1–5)"
-            empty={moodStressData.length < 2}
+            title="Daily Fat"
+            subtitle="Grams per day"
+            empty={fatData.length === 0}
           >
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={moodStressData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" />
+              <BarChart data={fatData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" vertical={false} />
                 <XAxis dataKey="date" tick={axisStyle} />
-                <YAxis tick={axisStyle} domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="mood" name="Mood" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                <Line type="monotone" dataKey="stress" name="Stress" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-              </LineChart>
+                <YAxis tick={axisStyle} unit="g" />
+                <Tooltip content={<CustomTooltip unit="g" />} />
+                <Bar dataKey="value" name="Fat" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
 
